@@ -72,7 +72,7 @@ class TileLayerDefinition:
   TILE_SIZE = 256
   TSIZE1 = 20037508.342789244
 
-  def __init__(self, title, attribution, serviceUrl, yOriginTop=1, zmin=TileDefaultSettings.ZMIN, zmax=TileDefaultSettings.ZMAX, bbox=None):
+  def __init__(self, title, attribution, serviceUrl, yOriginTop=1, zmin=TileDefaultSettings.ZMIN, zmax=TileDefaultSettings.ZMAX, bbox=None, epsg=None):
     self.title = title
     self.attribution = attribution
     self.serviceUrl = serviceUrl
@@ -80,6 +80,7 @@ class TileLayerDefinition:
     self.zmin = max(zmin, 0)
     self.zmax = zmax
     self.bbox = bbox
+    self.epsg = epsg
 
   def tileUrl(self, zoom, x, y):
     if not self.yOriginTop:
@@ -102,6 +103,17 @@ class TileLayerDefinition:
     xmax, ymax = self.degreesToTile(zoom, bbox.xmax, bbox.ymin)
     return BoundingBox(xmin, ymin, xmax, ymax)
 
+  def coordsToTile(self, zoom, x, y):
+    size = self.TSIZE1 / 2 ** (zoom - 1)
+    tx = int((x + self.TSIZE1) / size)
+    ty = int((self.TSIZE1 - y) / size)
+    return tx, ty
+
+  def bboxMercatorToTileRange(self, zoom, bbox):
+    xmin, ymin = self.coordsToTile(zoom, bbox.xmin, bbox.ymax)
+    xmax, ymax = self.coordsToTile(zoom, bbox.xmax, bbox.ymin)
+    return BoundingBox(xmin, ymin, xmax, ymax)
+
   def __str__(self):
     return "%s (%s)" % (self.title, self.serviceUrl)
 
@@ -109,7 +121,7 @@ class TileLayerDefinition:
     extent = ""
     if self.bbox:
       extent = self.bbox.toString(2)
-    return [self.title, self.attribution, self.serviceUrl, "%d-%d" % (self.zmin, self.zmax), extent, self.yOriginTop]
+    return [self.title, self.attribution, self.serviceUrl, "%d-%d" % (self.zmin, self.zmax), extent, self.epsg, self.yOriginTop]
 
   @classmethod
   def createEmptyInfo(cls):

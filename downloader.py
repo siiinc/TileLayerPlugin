@@ -25,187 +25,213 @@ import threading
 
 debug_mode = 0
 
+
 class Downloader(QObject):
+    # error status
+    NO_ERROR = 0
+    TIMEOUT_ERROR = 4
+    UNKNOWN_ERROR = -1
 
-  # error status
-  NO_ERROR = 0
-  TIMEOUT_ERROR = 4
-  UNKNOWN_ERROR = -1
+    # PyQt signals
+    replyFinished = pyqtSignal(str)
+    allRepliesFinished = pyqtSignal()
 
-  # PyQt signals
-  replyFinished = pyqtSignal(str)
-  allRepliesFinished = pyqtSignal()
+    def __init__(self, parent=None, maxConnections=2, defaultCacheExpiration=24, userAgent=""):
+        QObject.__init__(self, parent)
 
-  def __init__(self, parent=None, maxConnections=2, defaultCacheExpiration=24, userAgent=""):
-    QObject.__init__(self, parent)
+        self.maxConnections = maxConnections
+        self.defaultCacheExpiration = defaultCacheExpiration  # hours
+        self.userAgent = userAgent
 
-    self.maxConnections = maxConnections
-    self.defaultCacheExpiration = defaultCacheExpiration    # hours
-    self.userAgent = userAgent
+        # initialize variables
+        self.clear()
+        self.sync = False
 
-    # initialize variables
-    self.clear()
-    self.sync = False
+        self.eventLoop = QEventLoop()
 
-    self.eventLoop = QEventLoop()
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.timeOut)
+        self.redirected_URLs = {}
 
-    self.timer = QTimer()
-    self.timer.setSingleShot(True)
-    self.timer.timeout.connect(self.timeOut)
+    def clear(self):
+        self.queue = []
+        self.requestingReplies = {}
+        self.fetchedFiles = {}
 
-  def clear(self):
-    self.queue = []
-    self.requestingReplies = {}
-    self.fetchedFiles = {}
+        self._successes = 0
+        self._errors = 0
+        self._cacheHits = 0
 
-    self._successes = 0
-    self._errors = 0
-    self._cacheHits = 0
+        self.errorStatus = Downloader.NO_ERROR
 
-    self.errorStatus = Downloader.NO_ERROR
+    def _replyFinished(self):
+        reply = self.sender()
+        url = reply.request().url().toString()
+        status_code = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
 
-  def _replyFinished(self):
-    reply = self.sender()
-    url = reply.request().url().toString()
-    if not url in self.fetchedFiles:
-      self.fetchedFiles[url] = None
+        if status_code in [301, 302]:
+            # print	 "Redirection"
+            redirect = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
 
-    if url in self.requestingReplies:
-      del self.requestingReplies[url]
+            # create request
+            request = QNetworkRequest(redirect)
+            if self.userAgent:
+                request.setRawHeader("User-Agent", self.userAgent)  # will be overwritten in QgsNetworkAccessManager::createRequest() since 2.2
 
-    httpStatusCode = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
-    if reply.error() == QNetworkReply.NoError:
-      self._successes += 1
+            # send request
+            reply = QgsNetworkAccessManager.instance().get(request)
+            reply.finished.connect(self._replyFinished)
 
-      if reply.attribute(QNetworkRequest.SourceIsFromCacheAttribute):
-        self._cacheHits += 1
+            self.redirected_URLs[redirect.toString()] = url
+            self.replyFinished.emit(url)
+            return
 
-      elif not reply.hasRawHeader("Cache-Control"):
-        cache = QgsNetworkAccessManager.instance().cache()
-        if cache:
-          metadata = cache.metaData(reply.request().url())
-          if metadata.expirationDate().isNull():
-            metadata.setExpirationDate(QDateTime.currentDateTime().addSecs(self.defaultCacheExpiration * 3600))
-            cache.updateMetaData(metadata)
-            self.log("Default expiration date has been set: %s (%d h)" % (url, self.defaultCacheExpiration))
+        if url in self.redirected_URLs:
+            url = self.redirected_URLs[url]
 
-      if reply.isReadable():
-        data = reply.readAll()
-        self.fetchedFiles[url] = data
-      else:
-        qDebug("http status code: " + str(httpStatusCode))
+        if not url in self.fetchedFiles:
+            self.fetchedFiles[url] = None
 
-    else:
-      self._errors += 1
-      if self.errorStatus == self.NO_ERROR:
-        self.errorStatus = self.UNKNOWN_ERROR
+        if url in self.requestingReplies:
+            del self.requestingReplies[url]
 
-    self.replyFinished.emit(url)
-    reply.deleteLater()
+        httpStatusCode = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+        if reply.error() == QNetworkReply.NoError:
+            self._successes += 1
 
-    if len(self.queue) + len(self.requestingReplies) == 0:
-      # all replies have been received
-      if self.sync:
-        self.logT("eventLoop.quit()")
-        self.eventLoop.quit()
-      else:
+            if reply.attribute(QNetworkRequest.SourceIsFromCacheAttribute):
+                self._cacheHits += 1
+
+            elif not reply.hasRawHeader("Cache-Control"):
+                cache = QgsNetworkAccessManager.instance().cache()
+                if cache:
+                    metadata = cache.metaData(reply.request().url())
+                    if metadata.expirationDate().isNull():
+                        metadata.setExpirationDate(
+                            QDateTime.currentDateTime().addSecs(self.defaultCacheExpiration * 3600))
+                        cache.updateMetaData(metadata)
+                        self.log("Default expiration date has been set: %s (%d h)" % (url, self.defaultCacheExpiration))
+
+            if reply.isReadable():
+                data = reply.readAll()
+                self.fetchedFiles[url] = data
+                reply.setFinished(True)
+            else:
+                qDebug("http status code: " + str(httpStatusCode))
+
+        else:
+            self._errors += 1
+            if self.errorStatus == self.NO_ERROR:
+                self.errorStatus = self.UNKNOWN_ERROR
+
+        self.replyFinished.emit(url)
+        reply.deleteLater()
+
+        if len(self.queue) + len(self.requestingReplies) == 0:
+            # all replies have been received
+            if self.sync:
+                self.logT("eventLoop.quit()")
+                self.eventLoop.quit()
+            else:
+                self.timer.stop()
+
+            self.allRepliesFinished.emit()
+
+        elif len(self.queue) > 0:
+            # start fetching the next file
+            self.fetchNext()
+
+    def timeOut(self):
+        self.log("Downloader.timeOut()")
+        self.abort()
+        #self.errorStatus = Downloader.TIMEOUT_ERROR
+
+    def abort(self):
+        # clear queue and abort sent requests
+        self.queue = []
         self.timer.stop()
 
-      self.allRepliesFinished.emit()
+        for reply in self.requestingReplies.itervalues():
+            reply.abort()
+        #self.errorStatus = Downloader.UNKNOWN_ERROR
 
-    elif len(self.queue) > 0:
-      # start fetching the next file
-      self.fetchNext()
+    def fetchNext(self):
+        if len(self.queue) == 0:
+            return
+        url = self.queue.pop(0)
+        self.log("fetchNext: %s" % url)
 
-  def timeOut(self):
-    self.log("Downloader.timeOut()")
-    self.abort()
-    self.errorStatus = Downloader.TIMEOUT_ERROR
+        # create request
+        request = QNetworkRequest(QUrl(url))
+        if self.userAgent:
+            request.setRawHeader("User-Agent",
+                                 self.userAgent)  # will be overwritten in QgsNetworkAccessManager::createRequest() since 2.2
 
-  def abort(self):
-    # clear queue and abort sent requests
-    self.queue = []
-    self.timer.stop()
+        # send request
+        reply = QgsNetworkAccessManager.instance().get(request)
+        reply.finished.connect(self._replyFinished)
+        self.requestingReplies[url] = reply
+        return reply
 
-    for reply in self.requestingReplies.itervalues():
-      reply.abort()
-    self.errorStatus = Downloader.UNKNOWN_ERROR
+    def fetchFiles(self, urlList, timeoutSec=0):
+        self.log("fetchFiles()")
+        files = self._fetch(True, urlList, timeoutSec)
+        self.log("fetchFiles() End: %d" % self.errorStatus)
+        return files
 
-  def fetchNext(self):
-    if len(self.queue) == 0:
-      return
-    url = self.queue.pop(0)
-    self.log("fetchNext: %s" % url)
+    def fetchFilesAsync(self, urlList, timeoutSec=0):
+        self.log("fetchFilesAsync()")
+        self._fetch(False, urlList, timeoutSec)
 
-    # create request
-    request = QNetworkRequest(QUrl(url))
-    if self.userAgent:
-      request.setRawHeader("User-Agent", self.userAgent)    # will be overwritten in QgsNetworkAccessManager::createRequest() since 2.2
+    def _fetch(self, sync, urlList, timeoutSec):
+        self.clear()
+        self.sync = sync
 
-    # send request
-    reply = QgsNetworkAccessManager.instance().get(request)
-    reply.finished.connect(self._replyFinished)
-    self.requestingReplies[url] = reply
-    return reply
+        if not urlList:
+            return {}
 
-  def fetchFiles(self, urlList, timeoutSec=0):
-    self.log("fetchFiles()")
-    files = self._fetch(True, urlList, timeoutSec)
-    self.log("fetchFiles() End: %d" % self.errorStatus)
-    return files
+        for url in urlList:
+            if url not in self.queue:
+                self.queue.append(url)
 
-  def fetchFilesAsync(self, urlList, timeoutSec=0):
-    self.log("fetchFilesAsync()")
-    self._fetch(False, urlList, timeoutSec)
+        for i in range(self.maxConnections):
+            self.fetchNext()
 
-  def _fetch(self, sync, urlList, timeoutSec):
-    self.clear()
-    self.sync = sync
+        if timeoutSec > 0:
+            self.timer.setInterval(timeoutSec * 1000)
+            self.timer.start()
 
-    if not urlList:
-      return {}
+        if sync:
+            self.logT("eventLoop.exec_(): " + str(self.eventLoop))
+            self.eventLoop.exec_()
 
-    for url in urlList:
-      if url not in self.queue:
-        self.queue.append(url)
+            if timeoutSec > 0:
+                self.timer.stop()
 
-    for i in range(self.maxConnections):
-      self.fetchNext()
+            return self.fetchedFiles
 
-    if timeoutSec > 0:
-      self.timer.setInterval(timeoutSec * 1000)
-      self.timer.start()
+    def log(self, msg):
+        if debug_mode:
+            qDebug(msg)
 
-    if sync:
-      self.logT("eventLoop.exec_(): " + str(self.eventLoop))
-      self.eventLoop.exec_()
+    def logT(self, msg):
+        if debug_mode:
+            qDebug("%s: %s" % (str(threading.current_thread()), msg))
 
-      if timeoutSec > 0:
-        self.timer.stop()
+    def finishedCount(self):
+        return len(self.fetchedFiles)
 
-      return self.fetchedFiles
+    def unfinishedCount(self):
+        return len(self.queue) + len(self.requestingReplies)
 
-  def log(self, msg):
-    if debug_mode:
-      qDebug(msg)
-
-  def logT(self, msg):
-    if debug_mode:
-      qDebug("%s: %s" % (str(threading.current_thread()), msg))
-
-  def finishedCount(self):
-    return len(self.fetchedFiles)
-
-  def unfinishedCount(self):
-    return len(self.queue) + len(self.requestingReplies)
-
-  def stats(self):
-    finished = self.finishedCount()
-    unfinished = self.unfinishedCount()
-    return {"total": finished + unfinished,
-            "finished": finished,
-            "unfinished": unfinished,
-            "successed": self._successes,
-            "errors": self._errors,
-            "cacheHits": self._cacheHits,
-            "downloaded": self._successes - self._cacheHits}
+    def stats(self):
+        finished = self.finishedCount()
+        unfinished = self.unfinishedCount()
+        return {"total": finished + unfinished,
+                "finished": finished,
+                "unfinished": unfinished,
+                "successed": self._successes,
+                "errors": self._errors,
+                "cacheHits": self._cacheHits,
+                "downloaded": self._successes - self._cacheHits}
