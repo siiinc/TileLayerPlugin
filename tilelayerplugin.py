@@ -27,7 +27,7 @@ from qgis.core import QGis, QgsCoordinateReferenceSystem, QgsMapLayerRegistry, Q
 from qgis.gui import QgsMessageBar
 
 from tilelayer import TileLayer, TileLayerType
-import pydevd
+#import pydevd
 debug_mode = 0
 
 class TileLayerPlugin:
@@ -38,7 +38,7 @@ class TileLayerPlugin:
         self.apiChanged23 = QGis.QGIS_VERSION_INT >= 20300
         self.apiChanged27 = QGis.QGIS_VERSION_INT >= 20700
 
-        pydevd.settrace('localhost', port=9999, stdoutToServer=True, stderrToServer=True, suspend=False)
+        #pydevd.settrace('localhost', port=9999, stdoutToServer=True, stderrToServer=True, suspend=False)
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
