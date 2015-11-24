@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- TileLayerPlugin
+ IdahoLayerPlugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                              -------------------
@@ -22,6 +22,6 @@
 """
 
 def classFactory(iface):
-    # load TileLayerPlugin class from file TileLayerPlugin
-    from tilelayerplugin import TileLayerPlugin
-    return TileLayerPlugin(iface)
+    # load IdahoLayerPlugin class from file IdahoLayerPlugin
+    from idaholayerplugin import IdahoLayerPlugin
+    return IdahoLayerPlugin(iface)

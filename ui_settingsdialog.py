@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\Users\minorua\.qgis2\python\developing_plugins\TileLayerPlugin\settingsdialog.ui'
+# Form implementation generated from reading ui file 'D:\Users\minorua\.qgis2\python\developing_plugins\IdahoLayerPlugin\settingsdialog.ui'
 #
 # Created: Sat Aug 16 14:13:51 2014
 #      by: PyQt4 UI code generator 4.10.2
@@ -79,7 +79,7 @@ class Ui_Dialog(object):
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(_translate("Dialog", "TileLayerPlugin Settings", None))
+        Dialog.setWindowTitle(_translate("Dialog", "IdahoLayerPlugin Settings", None))
         self.label.setText(_translate("Dialog", "External layer definition directory", None))
         self.toolButton_externalDirectory.setText(_translate("Dialog", "...", None))
         self.label_2.setText(_translate("Dialog", "Download time-out (sec)", None))

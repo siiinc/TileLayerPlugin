@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- TileLayer Plugin
+ IdahoLayer Plugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                               -------------------
@@ -38,13 +38,13 @@ except:
 
 from downloader import Downloader
 from rotatedrect import RotatedRect
-from tiles import BoundingBox, Tile, TileDefaultSettings, TileLayerDefinition, Tiles
+from tiles import BoundingBox, Tile, TileDefaultSettings, IdahoLayerDefinition, Tiles
 
 debug_mode = 0
 
 
-class TileLayer(QgsPluginLayer):
-    LAYER_TYPE = "TileLayer"
+class IdahoLayer(QgsPluginLayer):
+    LAYER_TYPE = "IdahoLayer"
     MAX_TILE_COUNT = 256
     DEFAULT_BLEND_MODE = "SourceOver"
     DEFAULT_SMOOTH_RENDER = True
@@ -55,7 +55,7 @@ class TileLayer(QgsPluginLayer):
     messageBarSignal = pyqtSignal(str, str, int, int)
 
     def __init__(self, plugin, layerDef, creditVisibility=1):
-        QgsPluginLayer.__init__(self, TileLayer.LAYER_TYPE, layerDef.title)
+        QgsPluginLayer.__init__(self, IdahoLayer.LAYER_TYPE, layerDef.title)
         self.plugin = plugin
         self.iface = plugin.iface
         self.layerDef = layerDef
@@ -84,10 +84,13 @@ class TileLayer(QgsPluginLayer):
         self.setCrs(plugin.crs3857)
 
         # set extent
-        if layerDef.bbox and (not layerDef.epsg or layerDef.epsg == 4326):
-            self.setExtent(BoundingBox.degreesToMercatorMeters(layerDef.bbox).toQgsRectangle())
-        elif layerDef.bbox and (layerDef.epsg == 3857 or layerDef.epsg == 900913):
-            self.setExtent(layerDef.bbox.toQgsRectangle())
+        if layerDef.bbox:
+            if not layerDef.epsg:
+                layerDef.epsg = 4326
+            if layerDef.epsg == 3857 or layerDef.epsg == 900913:
+                self.setExtent(layerDef.bbox.toQgsRectangle())
+            else:
+                self.setExtent(BoundingBox.epsgToMercatorMeters(layerDef.bbox, layerDef.epsg).toQgsRectangle())
         else:
             self.setExtent(QgsRectangle(-layerDef.TSIZE1, -layerDef.TSIZE1, layerDef.TSIZE1, layerDef.TSIZE1))
 
@@ -99,7 +102,7 @@ class TileLayer(QgsPluginLayer):
         # downloader
         maxConnections = HonestAccess.maxConnections(layerDef.serviceUrl)
         cacheExpiry = QSettings().value("/qgis/defaultTileExpiry", 24, type=int)
-        userAgent = "QGIS/{0} TileLayerPlugin/{1}".format(QGis.QGIS_VERSION,
+        userAgent = "QGIS/{0} IdahoLayerPlugin/{1}".format(QGis.QGIS_VERSION,
                                                           self.plugin.VERSION)  # will be overwritten in QgsNetworkAccessManager::createRequest() since 2.2
         self.downloader = Downloader(self, maxConnections, cacheExpiry, userAgent)
         if self.iface:
@@ -108,7 +111,7 @@ class TileLayer(QgsPluginLayer):
         # TOS violation warning
         if HonestAccess.restrictedByTOS(layerDef.serviceUrl):
             QMessageBox.warning(None,
-                                u"{0} - {1}".format(self.tr("TileLayerPlugin"), layerDef.title),
+                                u"{0} - {1}".format(self.tr("IdahoLayerPlugin"), layerDef.title),
                                 self.tr("Access to the service is restricted by the TOS. Please follow the TOS."))
 
         # multi-thread rendering
@@ -222,10 +225,12 @@ class TileLayer(QgsPluginLayer):
 
             # bounding box limit
             if self.layerDef.bbox:
-                if self.layerDef.epsg == 4326:
-                    trange = self.layerDef.bboxDegreesToTileRange(zoom, self.layerDef.bbox)
+                if not self.layerDef.epsg:
+                    self.layerDef.epsg = 4326
                 elif self.layerDef.epsg == 3857 or self.layerDef.epsg == 900913:
                     trange = self.layerDef.bboxMercatorToTileRange(zoom, self.layerDef.bbox)
+                else:
+                    trange = self.layerDef.epsgToTileRange(zoom, self.layerDef.bbox)
                 ulx = max(ulx, trange.xmin)
                 uly = max(uly, trange.ymin)
                 lrx = min(lrx, trange.xmax)
@@ -250,7 +255,7 @@ class TileLayer(QgsPluginLayer):
             # zoom level has been determined
             break
 
-        self.logT("TileLayer.draw: {0} {1} {2} {3} {4}".format(zoom, ulx, uly, lrx, lry))
+        self.logT("IdahoLayer.draw: {0} {1} {2} {3} {4}".format(zoom, ulx, uly, lrx, lry))
 
         # save painter state
         painter.save()
@@ -538,8 +543,10 @@ class TileLayer(QgsPluginLayer):
         self.layerDef.zmax = int(self.customProperty("zmax", TileDefaultSettings.ZMAX))
         bbox = self.customProperty("bbox", None)
         if bbox:
+            if not self.layerDef.epsg:
+                self.layerDef.epsg = 4326
             self.layerDef.bbox = BoundingBox.fromString(bbox)
-            self.setExtent(BoundingBox.degreesToMercatorMeters(self.layerDef.bbox).toQgsRectangle())
+            self.setExtent(BoundingBox.epsgToMercatorMeters(self.layerDef.bbox).toQgsRectangle())
 
         # layer style
         self.setTransparency(int(self.customProperty("transparency", 0)))
@@ -554,7 +561,7 @@ class TileLayer(QgsPluginLayer):
     def writeXml(self, node, doc):
         element = node.toElement();
         element.setAttribute("type", "plugin")
-        element.setAttribute("name", TileLayer.LAYER_TYPE);
+        element.setAttribute("name", IdahoLayer.LAYER_TYPE);
         return True
 
     def readSymbology(self, node, errorMessage):
@@ -584,7 +591,7 @@ class TileLayer(QgsPluginLayer):
         if not self.plugin.apiChanged23:
             return self.downloader.fetchFiles(urls, self.plugin.downloadTimeout)
 
-        self.logT("TileLayer.fetchFiles() starts")
+        self.logT("IdahoLayer.fetchFiles() starts")
         # create a QEventLoop object that belongs to the current worker thread
         eventLoop = QEventLoop()
         self.downloader.allRepliesFinished.connect(eventLoop.quit)
@@ -618,7 +625,7 @@ class TileLayer(QgsPluginLayer):
         watchTimer.timeout.disconnect(eventLoop.quit)  #
         self.downloader.allRepliesFinished.disconnect(eventLoop.quit)
 
-        self.logT("TileLayer.fetchFiles() ends")
+        self.logT("IdahoLayer.fetchFiles() ends")
         return files
 
     def fetchRequestSlot(self, urls):
@@ -655,13 +662,13 @@ class TileLayer(QgsPluginLayer):
 #    self.renderer = QgsPluginLayerRenderer(self, renderContext)
 #    return self.renderer
 
-class TileLayerType(QgsPluginLayerType):
+class IdahoLayerType(QgsPluginLayerType):
     def __init__(self, plugin):
-        QgsPluginLayerType.__init__(self, TileLayer.LAYER_TYPE)
+        QgsPluginLayerType.__init__(self, IdahoLayer.LAYER_TYPE)
         self.plugin = plugin
 
     def createLayer(self):
-        return TileLayer(self.plugin, TileLayerDefinition.createEmptyInfo())
+        return IdahoLayer(self.plugin, IdahoLayerDefinition.createEmptyInfo())
 
     def showLayerProperties(self, layer):
         from propertiesdialog import PropertiesDialog

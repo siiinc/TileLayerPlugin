@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- TileLayer Plugin
+ IdahoLayer Plugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                              -------------------
@@ -25,7 +25,7 @@ from qgis.core import QgsMessageLog
 from ui_addlayerdialog import Ui_Dialog
 import os
 import codecs
-from tiles import BoundingBox, TileLayerDefinition
+from tiles import BoundingBox, IdahoLayerDefinition
 
 debug_mode = 0
 
@@ -56,11 +56,11 @@ class AddLayerDialog(QDialog):
 
         self.serviceInfoList = []
         # import layer definitions from external layer definition directory, and append it into the tree
-        extDir = QSettings().value("/TileLayerPlugin/extDir", "", type=unicode)
+        extDir = QSettings().value("/IdahoLayerPlugin/extDir", "", type=unicode)
         if extDir:
             self.importFromDirectory(extDir)
 
-        # import layer definitions from TileLayerPlugin/layers directory, and append it into the tree
+        # import layer definitions from IdahoLayerPlugin/layers directory, and append it into the tree
         pluginDir = os.path.dirname(QFile.decodeName(__file__))
         self.importFromDirectory(os.path.join(pluginDir, "layers"))
 
@@ -95,7 +95,7 @@ class AddLayerDialog(QDialog):
                 lines = f.readlines()
         except Exception as e:
             QgsMessageLog.logMessage(self.tr("Fail to read {0}: {1}").format(basename, unicode(e)),
-                                     self.tr("TileLayerPlugin"))
+                                     self.tr("IdahoLayerPlugin"))
             return False
 
         for i, line in enumerate(lines):
@@ -110,15 +110,15 @@ class AddLayerDialog(QDialog):
                 if not url:
                     raise
                 if nvals < 4:
-                    serviceInfo = TileLayerDefinition(title, attribution, url)
+                    serviceInfo = IdahoLayerDefinition(title, attribution, url)
                 else:
                     yOriginTop = int(vals[3])
                     if nvals < 6:
-                        serviceInfo = TileLayerDefinition(title, attribution, url, yOriginTop)
+                        serviceInfo = IdahoLayerDefinition(title, attribution, url, yOriginTop)
                     else:
                         zmin, zmax = map(int, vals[4:6])
                         if nvals < 10:
-                            serviceInfo = TileLayerDefinition(title, attribution, url, yOriginTop, zmin, zmax)
+                            serviceInfo = IdahoLayerDefinition(title, attribution, url, yOriginTop, zmin, zmax)
                         else:
                             bbox = BoundingBox.fromString(",".join(vals[6:10]))
                             epsg = None
@@ -126,10 +126,10 @@ class AddLayerDialog(QDialog):
                                 epsg = int(vals[10])
                             except Exception as e:
                                 i = 0
-                            serviceInfo = TileLayerDefinition(title, attribution, url, yOriginTop, zmin, zmax, bbox, epsg)
+                            serviceInfo = IdahoLayerDefinition(title, attribution, url, yOriginTop, zmin, zmax, bbox, epsg)
             except:
                 QgsMessageLog.logMessage(self.tr("Invalid line format: {} line {}").format(basename, i + 1),
-                                         self.tr("TileLayerPlugin"))
+                                         self.tr("IdahoLayerPlugin"))
                 continue
 
             # append the service info into the tree

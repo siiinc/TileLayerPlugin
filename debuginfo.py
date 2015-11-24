@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- TileLayer Plugin
+ IdahoLayer Plugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                               -------------------
@@ -27,7 +27,7 @@ def drawDebugInformation(layer, renderContext, zoom, xmin, ymin, xmax, ymax):
   mapSettings = self.iface.mapCanvas().mapSettings() if self.plugin.apiChanged23 else self.iface.mapCanvas().mapRenderer()
 
   lines = []
-  lines.append("TileLayer")
+  lines.append("IdahoLayer")
   lines.append(" zoom: %d, tile matrix extent: (%d, %d) - (%d, %d), tile count: %d * %d" % (zoom, xmin, ymin, xmax, ymax, xmax - xmin, ymax - ymin))
 
   extent = renderContext.extent()

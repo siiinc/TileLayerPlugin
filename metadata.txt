@@ -9,13 +9,13 @@
 
 
 [general]
-name=TileLayer Plugin
+name=IdahoLayer Plugin
 qgisMinimumVersion=2.0
-description=TileLayerPlugin is a plugin to add tiled maps on your map canvas.
-about=This plugin can render only tile maps in the tile format of Slippy Map (http://wiki.openstreetmap.org/wiki/Slippy_Map) and similar web tile maps that y-axis of the tile matrix is inverted. Tile size should be 256 x 256.
-version=0.60
-author=Minoru Akagi
-email=akaginch@gmail.com
+description=IdahoLayerPlugin is a plugin to add tiled maps on your map canvas.
+about=This plugin can render only tile maps in the tile format of Tile size should be 256 x 256.
+version=0.10
+author=
+email=
 
 # end of mandatory metadata
 
@@ -23,21 +23,19 @@ email=akaginch@gmail.com
 
 # Uncomment the following line and add your changelog entries:
 changelog=
-  0.60
-    - Map rotation support
-    - Added function (API) to add tile layer from Python
-    - Souce code clean-up
+  0.10
+    - Initial work
 
 # tags are comma separated with spaces allowed
-tags=tile,tms,web,plugin layer
+tags=DigitalGlobe,IDAHO,geobigdata,tile,tms,web,plugin layer
 
 category=Web
-homepage=https://github.com/minorua/TileLayerPlugin
-tracker=https://github.com/minorua/TileLayerPlugin
-repository=https://github.com/minorua/TileLayerPlugin
+homepage=https://github.com/TDG-Platform/IdahoLayerPlugin
+tracker=https://github.com/TDG-Platform/IdahoLayerPlugin
+repository=https://github.com/TDG-Platform/IdahoLayerPlugin
 icon=icon.png
 # experimental flag
-experimental=False
+experimental=True
 
 # deprecated flag (applies to the whole plugin, not just a single version
 deprecated=False
