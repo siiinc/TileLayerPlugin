@@ -79,11 +79,13 @@ class Downloader(QObject):
             if self.userAgent:
                 request.setRawHeader("User-Agent", self.userAgent)  # will be overwritten in QgsNetworkAccessManager::createRequest() since 2.2
 
+            QgsNetworkAccessManager.instance().deleteReply(reply)
             # send request
             reply = QgsNetworkAccessManager.instance().get(request)
             reply.finished.connect(self._replyFinished)
 
             self.redirected_URLs[redirect.toString()] = url
+
             self.replyFinished.emit(url)
             return
 
@@ -126,7 +128,7 @@ class Downloader(QObject):
                 self.errorStatus = self.UNKNOWN_ERROR
 
         self.replyFinished.emit(url)
-        reply.deleteLater()
+        QgsNetworkAccessManager.instance().deleteReply(reply)
 
         if len(self.queue) + len(self.requestingReplies) == 0:
             # all replies have been received
