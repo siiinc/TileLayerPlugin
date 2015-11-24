@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\Users\minorua\.qgis2\python\developing_plugins\IdahoLayerPlugin\propertiesdialog.ui'
+# Form implementation generated from reading ui file 'D:\Users\minorua\.qgis2\python\developing_plugins\TileLayerPlugin\propertiesdialog.ui'
 #
 # Created: Fri Jun 26 10:14:42 2015
 #      by: PyQt4 UI code generator 4.10.2

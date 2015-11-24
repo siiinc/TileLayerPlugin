@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- IdahoLayer Plugin
+ TileLayer Plugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                              -------------------

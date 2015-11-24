@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- IdahoLayerPlugin
+ TileLayerPlugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                               -------------------
@@ -26,11 +26,11 @@ from PyQt4.QtGui import QAction, QIcon
 from qgis.core import QGis, QgsCoordinateReferenceSystem, QgsMapLayerRegistry, QgsPluginLayerRegistry
 from qgis.gui import QgsMessageBar
 
-from idaholayer import IdahoLayer, IdahoLayerType
+from tilelayer import TileLayer, TileLayerType
 #import pydevd
 debug_mode = 0
 
-class IdahoLayerPlugin:
+class TileLayerPlugin:
 
     VERSION = "0.60"
 
@@ -55,14 +55,14 @@ class IdahoLayerPlugin:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
-        self.pluginName = self.tr("IdahoLayerPlugin")
-        self.downloadTimeout = int(settings.value("/IdahoLayerPlugin/timeout", 60, type=int))
-        self.navigationMessagesEnabled = int(settings.value("/IdahoLayerPlugin/naviMsg", Qt.Checked, type=int))
+        self.pluginName = self.tr("TileLayerPlugin")
+        self.downloadTimeout = int(settings.value("/TileLayerPlugin/timeout", 60, type=int))
+        self.navigationMessagesEnabled = int(settings.value("/TileLayerPlugin/naviMsg", Qt.Checked, type=int))
         self.crs3857 = None
         self.layers = {}
 
         # register plugin layer type
-        self.tileLayerType = IdahoLayerType(self)
+        self.tileLayerType = TileLayerType(self)
         QgsPluginLayerRegistry.instance().addPluginLayerType(self.tileLayerType)
 
         # connect signal-slot
@@ -72,13 +72,13 @@ class IdahoLayerPlugin:
         # create action
         icon = QIcon(os.path.join(self.plugin_dir, "icon.png"))
         self.action = QAction(icon, self.tr("Add Tile Layer..."), self.iface.mainWindow())
-        self.action.setObjectName("IdahoLayerPlugin_AddLayer")
+        self.action.setObjectName("TileLayerPlugin_AddLayer")
 
         # connect the action to the method
         self.action.triggered.connect(self.run)
 
         # add toolbar button and menu item
-        if QSettings().value("/IdahoLayerPlugin/moveToLayer", 0, type=int):
+        if QSettings().value("/TileLayerPlugin/moveToLayer", 0, type=int):
           self.iface.insertAddLayerAction(self.action)
           self.iface.layerToolBar().addAction(self.action)
         else:
@@ -86,14 +86,14 @@ class IdahoLayerPlugin:
 
     def unload(self):
         # remove the plugin menu item and icon
-        if QSettings().value("/IdahoLayerPlugin/moveToLayer", 0, type=int):
+        if QSettings().value("/TileLayerPlugin/moveToLayer", 0, type=int):
           self.iface.layerToolBar().removeAction(self.action)
           self.iface.removeAddLayerAction(self.action)
         else:
           self.iface.removePluginWebMenu(self.pluginName, self.action)
 
         # unregister plugin layer type
-        QgsPluginLayerRegistry.instance().removePluginLayerType(IdahoLayer.LAYER_TYPE)
+        QgsPluginLayerRegistry.instance().removePluginLayerType(TileLayer.LAYER_TYPE)
 
         # disconnect signal-slot
         QgsMapLayerRegistry.instance().layerRemoved.disconnect(self.layerRemoved)
@@ -104,9 +104,9 @@ class IdahoLayerPlugin:
         if debug_mode:
           qDebug("Layer %s removed" % layerId.encode("UTF-8"))
 
-    def addIdahoLayer(self, layerdef, creditVisibility=True):
+    def addTileLayer(self, layerdef, creditVisibility=True):
       """@api
-         @param layerdef - an object of IdahoLayerDefinition class (in tiles.py)
+         @param layerdef - an object of TileLayerDefinition class (in tiles.py)
          @param creditVisibility - visibility of credit label
          @returns newly created tile layer. if the layer is invalid, returns None
          @note added in 0.60
@@ -114,7 +114,7 @@ class IdahoLayerPlugin:
       if self.crs3857 is None:
         self.crs3857 = QgsCoordinateReferenceSystem(3857)
 
-      layer = IdahoLayer(self, layerdef, creditVisibility)
+      layer = TileLayer(self, layerdef, creditVisibility)
       if not layer.isValid():
         return None
 
@@ -129,10 +129,10 @@ class IdahoLayerPlugin:
       if dialog.exec_():
         creditVisibility = dialog.ui.checkBox_CreditVisibility.isChecked()
         for layerdef in dialog.selectedLayerDefinitions():
-          self.addIdahoLayer(layerdef, creditVisibility)
+          self.addTileLayer(layerdef, creditVisibility)
 
     def settings(self):
-      oldMoveToLayer = QSettings().value("/IdahoLayerPlugin/moveToLayer", 0, type=int)
+      oldMoveToLayer = QSettings().value("/TileLayerPlugin/moveToLayer", 0, type=int)
 
       from settingsdialog import SettingsDialog
       dialog = SettingsDialog(self.iface)
@@ -191,4 +191,4 @@ class IdahoLayerPlugin:
       self.iface.messageBar().pushMessage(self.pluginName, msg, QgsMessageBar.INFO, 5)
 
     def tr(self, msg):
-      return QCoreApplication.translate("IdahoLayerPlugin", msg)
+      return QCoreApplication.translate("TileLayerPlugin", msg)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- IdahoLayer Plugin
+ TileLayer Plugin
                                  A QGIS plugin
  Plugin layer for Tile Maps
                              -------------------
@@ -34,20 +34,20 @@ class SettingsDialog(QDialog):
 
     # load settings
     settings = QSettings()
-    self.ui.lineEdit_externalDirectory.setText(settings.value("/IdahoLayerPlugin/extDir", "", type=unicode))
-    self.ui.spinBox_downloadTimeout.setValue(int(settings.value("/IdahoLayerPlugin/timeout", 30, type=int)))
-    self.ui.checkBox_MoveToLayer.setCheckState(int(settings.value("/IdahoLayerPlugin/moveToLayer", 0, type=int)))
-    self.ui.checkBox_NavigationMessages.setCheckState(int(settings.value("/IdahoLayerPlugin/naviMsg", Qt.Checked, type=int)))
+    self.ui.lineEdit_externalDirectory.setText(settings.value("/TileLayerPlugin/extDir", "", type=unicode))
+    self.ui.spinBox_downloadTimeout.setValue(int(settings.value("/TileLayerPlugin/timeout", 30, type=int)))
+    self.ui.checkBox_MoveToLayer.setCheckState(int(settings.value("/TileLayerPlugin/moveToLayer", 0, type=int)))
+    self.ui.checkBox_NavigationMessages.setCheckState(int(settings.value("/TileLayerPlugin/naviMsg", Qt.Checked, type=int)))
 
   def accept(self):
     QDialog.accept(self)
 
     # save settings
     settings = QSettings()
-    settings.setValue("/IdahoLayerPlugin/extDir", self.ui.lineEdit_externalDirectory.text())
-    settings.setValue("/IdahoLayerPlugin/timeout", self.ui.spinBox_downloadTimeout.value())
-    settings.setValue("/IdahoLayerPlugin/moveToLayer", self.ui.checkBox_MoveToLayer.checkState())
-    settings.setValue("/IdahoLayerPlugin/naviMsg", self.ui.checkBox_NavigationMessages.checkState())
+    settings.setValue("/TileLayerPlugin/extDir", self.ui.lineEdit_externalDirectory.text())
+    settings.setValue("/TileLayerPlugin/timeout", self.ui.spinBox_downloadTimeout.value())
+    settings.setValue("/TileLayerPlugin/moveToLayer", self.ui.checkBox_MoveToLayer.checkState())
+    settings.setValue("/TileLayerPlugin/naviMsg", self.ui.checkBox_NavigationMessages.checkState())
 
   def selectExternalDirectory(self):
     # show select directory dialog
