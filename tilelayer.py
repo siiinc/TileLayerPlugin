@@ -84,10 +84,13 @@ class TileLayer(QgsPluginLayer):
         self.setCrs(plugin.crs3857)
 
         # set extent
-        if layerDef.bbox and (not layerDef.epsg or layerDef.epsg == 4326):
-            self.setExtent(BoundingBox.degreesToMercatorMeters(layerDef.bbox).toQgsRectangle())
-        elif layerDef.bbox and (layerDef.epsg == 3857 or layerDef.epsg == 900913):
-            self.setExtent(layerDef.bbox.toQgsRectangle())
+        if layerDef.bbox:
+            if not layerDef.epsg:
+                layerDef.epsg = 4326
+            if layerDef.epsg == 3857 or layerDef.epsg == 900913:
+                self.setExtent(layerDef.bbox.toQgsRectangle())
+            else:
+                self.setExtent(BoundingBox.epsgToMercatorMeters(layerDef.bbox, layerDef.epsg).toQgsRectangle())
         else:
             self.setExtent(QgsRectangle(-layerDef.TSIZE1, -layerDef.TSIZE1, layerDef.TSIZE1, layerDef.TSIZE1))
 
@@ -222,10 +225,12 @@ class TileLayer(QgsPluginLayer):
 
             # bounding box limit
             if self.layerDef.bbox:
-                if self.layerDef.epsg == 4326:
-                    trange = self.layerDef.bboxDegreesToTileRange(zoom, self.layerDef.bbox)
+                if not self.layerDef.epsg:
+                    self.layerDef.epsg = 4326
                 elif self.layerDef.epsg == 3857 or self.layerDef.epsg == 900913:
                     trange = self.layerDef.bboxMercatorToTileRange(zoom, self.layerDef.bbox)
+                else:
+                    trange = self.layerDef.epsgToTileRange(zoom, self.layerDef.bbox)
                 ulx = max(ulx, trange.xmin)
                 uly = max(uly, trange.ymin)
                 lrx = min(lrx, trange.xmax)
@@ -538,8 +543,10 @@ class TileLayer(QgsPluginLayer):
         self.layerDef.zmax = int(self.customProperty("zmax", TileDefaultSettings.ZMAX))
         bbox = self.customProperty("bbox", None)
         if bbox:
+            if not self.layerDef.epsg:
+                self.layerDef.epsg = 4326
             self.layerDef.bbox = BoundingBox.fromString(bbox)
-            self.setExtent(BoundingBox.degreesToMercatorMeters(self.layerDef.bbox).toQgsRectangle())
+            self.setExtent(BoundingBox.epsgToMercatorMeters(self.layerDef.bbox).toQgsRectangle())
 
         # layer style
         self.setTransparency(int(self.customProperty("transparency", 0)))
@@ -570,7 +577,7 @@ class TileLayer(QgsPluginLayer):
         lines.append(fmt % (self.tr("Attribution"), self.layerDef.attribution))
         lines.append(fmt % (self.tr("URL"), self.layerDef.serviceUrl))
         lines.append(fmt % (self.tr("yOrigin"), u"%s (yOriginTop=%d)" % (
-        ("Bottom", "Top")[self.layerDef.yOriginTop], self.layerDef.yOriginTop)))
+            ("Bottom", "Top")[self.layerDef.yOriginTop], self.layerDef.yOriginTop)))
         if self.layerDef.bbox:
             extent = self.layerDef.bbox.toString()
         else:
