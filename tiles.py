@@ -20,7 +20,7 @@
  ***************************************************************************/
 """
 import math
-from PyQt4.QtCore import QRect
+from PyQt4.QtCore import QRect, Qt
 from PyQt4.QtGui import QImage, QPainter
 from qgis.core import *
 
@@ -175,6 +175,7 @@ class Tiles:
         width = (self.xmax - self.xmin + 1) * self.TILE_SIZE
         height = (self.ymax - self.ymin + 1) * self.TILE_SIZE
         image = QImage(width, height, QImage.Format_ARGB32_Premultiplied)
+        image.fill(Qt.transparent)
         p = QPainter(image)
         for tile in self.tiles.values():
             if not tile.data:
